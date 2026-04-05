@@ -1,0 +1,4 @@
+apiVersion: v2
+name: home-prod
+description: Home production K3s cluster apps
+version: 0.1.0

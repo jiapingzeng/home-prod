@@ -1,0 +1,4 @@
+gpu:
+  enabled: true
+  # Nvidia device plugin version
+  pluginVersion: v0.17.0

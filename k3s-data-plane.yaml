@@ -1,0 +1,9 @@
+#cloud-config
+package_update: true
+packages:
+  - qemu-guest-agent
+  - curl
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - curl -sfL https://get.k3s.io | K3S_URL=https://control-1:6443 K3S_TOKEN=my-secret-token sh -
