@@ -17,6 +17,6 @@ runcmd:
   - apt-get update
   - DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-container-toolkit
   # Install K3s agent (auto-detects nvidia container runtime)
-  - curl -sfL https://get.k3s.io | K3S_URL=https://control-1:6443 K3S_TOKEN=my-secret-token sh -s - --node-label nvidia.com/gpu=true
+  - curl -sfL https://get.k3s.io | K3S_URL=https://${CONTROL_PLANE_HOST}:6443 K3S_TOKEN=${K3S_TOKEN} sh -s - --node-label nvidia.com/gpu=true
   # Reboot into the new kernel so nvidia module is available
   - reboot

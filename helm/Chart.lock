@@ -1,0 +1,9 @@
+dependencies:
+- name: csi-driver-nfs
+  repository: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+  version: 4.11.0
+- name: external-dns
+  repository: https://kubernetes-sigs.github.io/external-dns/
+  version: 1.16.1
+digest: sha256:db28dfe9f0c3ea03f998b53c4651ac351bcdc6bb298ce4d6ccaece271a03c08f
+generated: "2026-04-05T17:53:38.480056082-07:00"

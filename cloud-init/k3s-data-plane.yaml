@@ -6,4 +6,4 @@ packages:
 runcmd:
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
-  - curl -sfL https://get.k3s.io | K3S_URL=https://control-1:6443 K3S_TOKEN=my-secret-token sh -
+  - curl -sfL https://get.k3s.io | K3S_URL=https://${CONTROL_PLANE_HOST}:6443 K3S_TOKEN=${K3S_TOKEN} sh -

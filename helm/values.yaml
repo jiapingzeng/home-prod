@@ -1,4 +1,35 @@
 gpu:
-  enabled: true
-  # Nvidia device plugin version
+  enabled: false
   pluginVersion: v0.17.0
+
+nfs:
+  server: ""
+  path: /mnt/nfs/k3s
+
+domain: ""
+
+k3s:
+  podCIDR: 10.42.0.0/16
+  serviceCIDR: 10.43.0.0/16
+
+external-dns:
+  provider:
+    name: cloudflare
+  env:
+    - name: CF_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: cloudflare-api-token
+          key: cf_api_token
+  sources:
+    - ingress
+    - node
+  domainFilters: []
+  policy: sync
+  txtOwnerId: home-prod
+
+homeAssistant:
+  enabled: true
+  version: "2025.4"
+  storage: 5Gi
+  timezone: ""

@@ -1,0 +1,106 @@
+{{- if .Values.homeAssistant.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-init
+data:
+  init.sh: |
+    #!/bin/sh
+    if ! grep -q "trusted_proxies" /config/configuration.yaml 2>/dev/null; then
+      cat >> /config/configuration.yaml <<EOF
+
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - {{ .Values.k3s.podCIDR }}
+        - {{ .Values.k3s.serviceCIDR }}
+    EOF
+    fi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-config
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: {{ .Values.homeAssistant.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-assistant
+  labels:
+    app: home-assistant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: home-assistant
+  template:
+    metadata:
+      labels:
+        app: home-assistant
+    spec:
+      initContainers:
+        - name: init-config
+          image: busybox
+          command: ['sh', '/scripts/init.sh']
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: init-scripts
+              mountPath: /scripts
+      containers:
+        - name: home-assistant
+          image: ghcr.io/home-assistant/home-assistant:{{ .Values.homeAssistant.version }}
+          ports:
+            - containerPort: 8123
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          env:
+            - name: TZ
+              value: {{ .Values.homeAssistant.timezone }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: home-assistant-config
+        - name: init-scripts
+          configMap:
+            name: home-assistant-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant
+spec:
+  type: ClusterIP
+  selector:
+    app: home-assistant
+  ports:
+    - port: 8123
+      targetPort: 8123
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: home-assistant
+spec:
+  rules:
+    - host: ha.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: home-assistant
+                port:
+                  number: 8123
+{{- end }}

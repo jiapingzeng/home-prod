@@ -1,9 +1,17 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Load user config
+if [[ ! -f "$SCRIPT_DIR/config.env" ]]; then
+    echo "Missing config.env. Copy config.env.example to config.env and fill in your values."
+    exit 1
+fi
+source "$SCRIPT_DIR/config.env"
+
 TEMPLATE=9000
 SNIPPET_DIR="/var/lib/vz/snippets"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLOUD_IMAGE="noble-server-cloudimg-amd64.img"
 CLOUD_IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/$CLOUD_IMAGE"
 
@@ -11,7 +19,7 @@ VM_IDS=(101 201 202)
 
 declare -A VM_CONFIG=(
     [101]="--cicustom vendor=local:snippets/k3s-control-plane.yaml"
-    [201]="--cpu host --cores 8 --memory 8192 --hostpci0 mapping=rtx3090,pcie=1 --cicustom vendor=local:snippets/k3s-data-plane-gpu.yaml"
+    [201]="--cpu host --cores 8 --memory 8192 --hostpci0 mapping=$GPU_MAPPING,pcie=1 --cicustom vendor=local:snippets/k3s-data-plane-gpu.yaml"
     [202]="--cpu host --cores 8 --memory 8192 --cicustom vendor=local:snippets/k3s-data-plane.yaml"
 )
 declare -A VM_NAME=(
@@ -40,7 +48,7 @@ template_create() {
         --efidisk0 local-lvm:0 --scsihw virtio-scsi-pci
     qm set $TEMPLATE --scsi0 local-lvm:0,import-from="$SCRIPT_DIR/$CLOUD_IMAGE"
     qm set $TEMPLATE --ide2 local-lvm:cloudinit --boot order=scsi0 --agent enabled=1
-    qm set $TEMPLATE --sshkeys /tmp/keys.pub --ciuser ubuntu --cipassword password --ipconfig0 ip=dhcp
+    qm set $TEMPLATE --sshkeys "$SSH_KEYS" --ciuser ubuntu --cipassword password --ipconfig0 ip=dhcp
     qm resize $TEMPLATE scsi0 32G
     qm template $TEMPLATE
     echo "=== Template $TEMPLATE created ==="
@@ -79,11 +87,19 @@ clean() {
     echo "Done"
 }
 
-start() {
+copy_snippets() {
     echo "=== Copying snippets ==="
-    cp "$SCRIPT_DIR"/k3s-*.yaml $SNIPPET_DIR/
+    for f in "$SCRIPT_DIR"/cloud-init/*.yaml; do
+        sed -e "s|\${K3S_TOKEN}|$K3S_TOKEN|g" \
+            -e "s|\${CONTROL_PLANE_HOST}|$CONTROL_PLANE_HOST|g" \
+            "$f" > "$SNIPPET_DIR/$(basename "$f")"
+    done
+}
 
-    for id in 101 201 202; do
+start() {
+    copy_snippets
+
+    for id in "${VM_IDS[@]}"; do
         start_node $id
     done
     echo "=== Done. Check status: ./cluster.sh status ==="
@@ -91,8 +107,7 @@ start() {
 
 restart() {
     local id=$1
-    echo "=== Copying snippets ==="
-    cp "$SCRIPT_DIR"/k3s-*.yaml $SNIPPET_DIR/
+    copy_snippets
 
     if [[ -n "$id" ]]; then
         if [[ -z "${VM_NAME[$id]}" ]]; then
@@ -103,6 +118,8 @@ restart() {
         start_node $id
     else
         clean
+        template_clean
+        template_create
         for id in "${VM_IDS[@]}"; do
             start_node $id
         done
@@ -111,7 +128,7 @@ restart() {
 }
 
 status() {
-    ssh ubuntu@control-1 sudo kubectl get nodes
+    ssh ubuntu@$CONTROL_PLANE_HOST sudo kubectl get nodes
 }
 
 case "${1:-}" in

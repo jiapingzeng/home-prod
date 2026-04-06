@@ -2,3 +2,10 @@ apiVersion: v2
 name: home-prod
 description: Home production K3s cluster apps
 version: 0.1.0
+dependencies:
+  - name: csi-driver-nfs
+    version: v4.11.0
+    repository: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+  - name: external-dns
+    version: 1.16.1
+    repository: https://kubernetes-sigs.github.io/external-dns/

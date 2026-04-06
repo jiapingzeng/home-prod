@@ -1,1 +1,5 @@
-.claude
+config.env
+helm/charts/
+helm/values-secret.yaml
+*.img
+.*
