@@ -90,7 +90,12 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ollama
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
+  tls:
+    - hosts:
+        - ollama.{{ .Values.domain }}
   rules:
     - host: ollama.{{ .Values.domain }}
       http:

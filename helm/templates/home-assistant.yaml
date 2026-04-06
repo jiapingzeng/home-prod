@@ -91,7 +91,12 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: home-assistant
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
 spec:
+  tls:
+    - hosts:
+        - ha.{{ .Values.domain }}
   rules:
     - host: ha.{{ .Values.domain }}
       http:

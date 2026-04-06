@@ -1,0 +1,148 @@
+{{- if .Values.openclaw.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openclaw-config
+data:
+  openclaw.json: |
+    {
+      "gateway": {
+        "bind": "lan",
+        "auth": { "mode": "token", "token": "{{ .Values.openclaw.gatewayToken }}" },
+        "controlUi": {
+          "allowedOrigins": ["https://openclaw.{{ .Values.domain }}"],
+          "dangerouslyDisableDeviceAuth": true
+        }
+      },
+      "models": {
+        "providers": {
+          "ollama": {
+            "baseUrl": "http://ollama:11434",
+            "apiKey": "ollama-local",
+            "api": "ollama",
+            "models": [
+              {
+                "id": "{{ .Values.openclaw.model }}",
+                "name": "{{ .Values.openclaw.model }}",
+                "reasoning": true,
+                "input": ["text"],
+                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
+                "contextWindow": 32768,
+                "maxTokens": 32768
+              }
+            ]
+          }
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": { "primary": "ollama/{{ .Values.openclaw.model }}" }
+        }
+      }
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openclaw-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: {{ .Values.openclaw.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  labels:
+    app: openclaw
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openclaw
+  template:
+    metadata:
+      labels:
+        app: openclaw
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: init-config
+          image: busybox
+          command: ['sh', '-c', 'cp /config-src/openclaw.json /data/openclaw.json']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config-src
+      containers:
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:{{ .Values.openclaw.version }}
+          ports:
+            - containerPort: 18789
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.openclaw
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 18789
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 18789
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: openclaw-data
+        - name: config
+          configMap:
+            name: openclaw-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw
+spec:
+  type: ClusterIP
+  selector:
+    app: openclaw
+  ports:
+    - port: 18789
+      targetPort: 18789
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openclaw
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  tls:
+    - hosts:
+        - openclaw.{{ .Values.domain }}
+  rules:
+    - host: openclaw.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openclaw
+                port:
+                  number: 18789
+{{- end }}

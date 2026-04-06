@@ -7,9 +7,10 @@ Home automation Kubernetes cluster on Proxmox with GPU passthrough, NFS storage,
 - **3-node Kubernetes cluster** on Proxmox VMs (1 control plane, 2 workers) provisioned via cloud-init
 - **GPU passthrough** with NVIDIA container runtime support (optional)
 - **NFS persistent storage** on the Proxmox host, provisioned dynamically via CSI driver
-- **Automatic DNS** via external-dns + Cloudflare
+- **Automatic DNS + HTTPS** via external-dns, Cloudflare, and Let's Encrypt
 - **Home Assistant** with NFS-backed config and Ingress routing
 - **Ollama** LLM inference server with GPU acceleration and persistent model storage
+- **OpenClaw** AI agent with chat support backed by local Ollama models
 
 ## Architecture
 
@@ -25,7 +26,8 @@ Kubernetes Cluster
 ├── external-dns         ── auto-syncs Ingress hostnames to Cloudflare DNS
 ├── NVIDIA device plugin ── exposes GPU to pods (optional)
 ├── Home Assistant       ── ha.<domain>, config persisted on NFS
-└── Ollama               ── ollama.<domain>, models persisted on NFS
+├── Ollama               ── ollama.<domain>, models persisted on NFS
+└── OpenClaw             ── openclaw.<domain>, AI agent gateway using Ollama
 ```
 
 VM hostnames are registered automatically via DHCP DNS, so the cluster uses hostnames instead of hardcoded IPs. external-dns keeps Cloudflare DNS records in sync with the cluster's current IPs.
@@ -49,7 +51,9 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 │       ├── home-assistant.yaml
 │       ├── nfs-storage-class.yaml
 │       ├── nvidia-device-plugin.yaml
-│       └── ollama.yaml
+│       ├── ollama.yaml
+│       ├── openclaw.yaml
+│       └── traefik-config.yaml
 ```
 
 ## Prerequisites
@@ -78,6 +82,8 @@ Edit `helm/values-secret.yaml`:
 | `external-dns.domainFilters` | Your Cloudflare zone | `[example.com]` |
 | `homeAssistant.timezone` | Your timezone | `America/Los_Angeles` |
 | `gpu.enabled` | Enable NVIDIA GPU support | `true` / `false` |
+| `acme.email` | Email for Let's Encrypt certificate expiry notices | `you@example.com` |
+| `openclaw.gatewayToken` | OpenClaw gateway auth token | Any random string |
 
 ### 2. Install
 
@@ -87,7 +93,7 @@ helm dependency update
 helm install home-prod . -f values-secret.yaml
 ```
 
-Home Assistant will be available at `http://ha.<your-domain>` once DNS propagates (may take a few minutes).
+Services will be available at `https://<app>.<your-domain>` once DNS propagates (may take a few minutes).
 
 ### 3. Upgrade
 
@@ -97,6 +103,10 @@ After changing values or templates:
 cd helm
 helm upgrade home-prod . -f values-secret.yaml
 ```
+
+### HTTPS
+
+TLS certificates are automatically provisioned via Let's Encrypt using Cloudflare DNS-01 validation. This works for internal services — no ports need to be exposed to the internet. Traefik (the built-in K3s ingress controller) handles certificate issuance, renewal, and TLS termination.
 
 ### GPU Support
 

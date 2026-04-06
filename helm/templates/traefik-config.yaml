@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-traefik
+  namespace: kube-system
+type: Opaque
+stringData:
+  api-token: {{ .Values.cloudflare.apiToken | quote }}
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |
+    ports:
+      web:
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: {{ .Values.acme.email }}
+          storage: /data/acme.json
+          dnsChallenge:
+            provider: cloudflare
+            resolvers:
+              - 1.1.1.1:53
+              - 8.8.8.8:53
+    env:
+      - name: CF_DNS_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: cloudflare-traefik
+            key: api-token
+    persistence:
+      enabled: true
+      storageClass: local-path
+      size: 128Mi
