@@ -44,8 +44,7 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 │   └── k3s-data-plane-gpu.yaml     # GPU worker node provisioning
 ├── helm/
 │   ├── Chart.yaml                  # Helm chart with dependencies
-│   ├── values.yaml                 # Default values
-│   ├── values-secret.yaml.example  # User-specific config template
+│   ├── values.yaml.example         # Config template (copy to values.yaml)
 │   └── templates/
 │       ├── cloudflare-secret.yaml
 │       ├── home-assistant.yaml
@@ -69,10 +68,10 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 ### 1. Configure
 
 ```bash
-cp helm/values-secret.yaml.example helm/values-secret.yaml
+cp helm/values.yaml.example helm/values.yaml
 ```
 
-Edit `helm/values-secret.yaml`:
+Edit `helm/values.yaml`:
 
 | Key | Description | Example |
 |-----|-------------|---------|
@@ -83,14 +82,17 @@ Edit `helm/values-secret.yaml`:
 | `homeAssistant.timezone` | Your timezone | `America/Los_Angeles` |
 | `gpu.enabled` | Enable NVIDIA GPU support | `true` / `false` |
 | `acme.email` | Email for Let's Encrypt certificate expiry notices | `you@example.com` |
+| `ollama.models` | Models to auto-download on startup | `[qwen3.5:27b]` |
 | `openclaw.gatewayToken` | OpenClaw gateway auth token | Any random string |
+| `openclaw.discordToken` | Discord bot token | |
+| `openclaw.discordAllowedUsers` | Discord user IDs allowed to DM the bot | `["123456789"]` |
 
 ### 2. Install
 
 ```bash
 cd helm
 helm dependency update
-helm install home-prod . -f values-secret.yaml
+helm install home-prod .
 ```
 
 Services will be available at `https://<app>.<your-domain>` once DNS propagates (may take a few minutes).
@@ -101,8 +103,22 @@ After changing values or templates:
 
 ```bash
 cd helm
-helm upgrade home-prod . -f values-secret.yaml
+helm upgrade home-prod .
 ```
+
+### Ollama
+
+Ollama runs on the GPU node and auto-downloads models listed in `ollama.models` on startup. Models are persisted on NFS so they survive restarts. To pull additional models:
+
+```bash
+kubectl exec deploy/ollama -- ollama pull <model-name>
+```
+
+### OpenClaw
+
+OpenClaw is an AI agent gateway that connects to your local Ollama instance. Access the Control UI at `https://openclaw.<your-domain>` using the gateway token from your config.
+
+To connect a Discord bot, create one at [discord.com/developers](https://discord.com/developers/applications) with the `bot` and `applications.commands` scopes, enable the Message Content Intent, and add the token to your config. Add your Discord user ID to `discordAllowedUsers` to skip the pairing step.
 
 ### HTTPS
 
@@ -110,7 +126,7 @@ TLS certificates are automatically provisioned via Let's Encrypt using Cloudflar
 
 ### GPU Support
 
-Disabled by default. To enable, set `gpu.enabled: true` in your `values-secret.yaml`. The NVIDIA device plugin only runs on nodes labeled `nvidia.com/gpu=true` (set automatically by the cloud-init script on GPU nodes).
+Disabled by default. To enable, set `gpu.enabled: true` in your `values.yaml`. The NVIDIA device plugin only runs on nodes labeled `nvidia.com/gpu=true` (set automatically by the cloud-init script on GPU nodes).
 
 Verify:
 ```bash

@@ -34,9 +34,18 @@ data:
           }
         }
       },
+      "channels": {
+        "discord": {
+          "enabled": true,
+          "token": "{{ .Values.openclaw.discordToken }}",
+          "dmPolicy": "allowlist",
+          "allowFrom": [{{- range $i, $id := .Values.openclaw.discordAllowedUsers }}{{- if $i }}, {{ end }}"{{ $id }}"{{- end }}]
+        }
+      },
       "agents": {
         "defaults": {
-          "model": { "primary": "ollama/{{ .Values.openclaw.model }}" }
+          "model": { "primary": "ollama/{{ .Values.openclaw.model }}" },
+          "timeoutSeconds": {{ .Values.openclaw.timeoutSeconds }}
         }
       }
     }
@@ -70,11 +79,14 @@ spec:
     metadata:
       labels:
         app: openclaw
+      annotations:
+        checksum/config: {{ .Values.openclaw | toJson | sha256sum }}
     spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
       initContainers:
         - name: init-config
           image: busybox

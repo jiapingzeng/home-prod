@@ -3,13 +3,16 @@ gpu:
   pluginVersion: v0.17.0
 
 nfs:
-  server: ""
+  server: your-nfs-hostname
   path: /mnt/nfs/k3s
 
-domain: ""
+domain: home.example.com
 
 acme:
-  email: ""
+  email: you@example.com
+
+cloudflare:
+  apiToken: your-cloudflare-api-token
 
 k3s:
   podCIDR: 10.42.0.0/16
@@ -27,7 +30,8 @@ external-dns:
   sources:
     - ingress
     - node
-  domainFilters: []
+  domainFilters:
+    - example.com
   policy: sync
   txtOwnerId: home-prod
 
@@ -35,18 +39,23 @@ homeAssistant:
   enabled: true
   version: "2025.4"
   storage: 5Gi
-  timezone: ""
+  timezone: America/Los_Angeles
 
 ollama:
   enabled: true
   version: latest
   storage: 50Gi
   gpu: false
-  models: []
+  models:
+    - qwen3.5:27b
 
 openclaw:
   enabled: true
   version: latest
-  storage: 10Gi
+  storage: 64Gi
   model: qwen3.5:27b
-  gatewayToken: ""
+  timeoutSeconds: 600
+  gatewayToken: your-gateway-token
+  discordToken: your-discord-bot-token
+  discordAllowedUsers:
+    - "your-discord-user-id"

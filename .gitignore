@@ -1,5 +1,6 @@
 config.env
 helm/charts/
+helm/values.yaml
 helm/values-secret.yaml
 *.img
 .*

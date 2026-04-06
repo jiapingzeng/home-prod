@@ -28,6 +28,8 @@ spec:
     metadata:
       labels:
         app: ollama
+      annotations:
+        checksum/config: {{ .Values.ollama | toJson | sha256sum }}
     spec:
       {{- if .Values.ollama.gpu }}
       runtimeClassName: nvidia
