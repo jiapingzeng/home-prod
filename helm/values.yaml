@@ -33,3 +33,10 @@ homeAssistant:
   version: "2025.4"
   storage: 5Gi
   timezone: ""
+
+ollama:
+  enabled: true
+  version: latest
+  storage: 50Gi
+  gpu: false
+  models: []

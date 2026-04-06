@@ -1,0 +1,105 @@
+{{- if .Values.ollama.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: {{ .Values.ollama.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      {{- if .Values.ollama.gpu }}
+      runtimeClassName: nvidia
+      nodeSelector:
+        nvidia.com/gpu: "true"
+      {{- end }}
+      {{- if .Values.ollama.models }}
+      initContainers:
+        - name: download-models
+          image: ollama/ollama:{{ .Values.ollama.version }}
+          command: ['sh', '-c']
+          args:
+            - |
+              ollama serve &
+              sleep 5
+              {{- range .Values.ollama.models }}
+              ollama pull {{ . }}
+              {{- end }}
+              kill %1 || true
+          volumeMounts:
+            - name: data
+              mountPath: /root/.ollama
+          {{- if .Values.ollama.gpu }}
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: ollama
+          image: ollama/ollama:{{ .Values.ollama.version }}
+          ports:
+            - containerPort: 11434
+          volumeMounts:
+            - name: data
+              mountPath: /root/.ollama
+          {{- if .Values.ollama.gpu }}
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+          {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ollama-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+spec:
+  type: ClusterIP
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ollama
+spec:
+  rules:
+    - host: ollama.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ollama
+                port:
+                  number: 11434
+{{- end }}

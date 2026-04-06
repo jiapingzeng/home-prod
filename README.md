@@ -9,6 +9,7 @@ Home automation Kubernetes cluster on Proxmox with GPU passthrough, NFS storage,
 - **NFS persistent storage** on the Proxmox host, provisioned dynamically via CSI driver
 - **Automatic DNS** via external-dns + Cloudflare
 - **Home Assistant** with NFS-backed config and Ingress routing
+- **Ollama** LLM inference server with GPU acceleration and persistent model storage
 
 ## Architecture
 
@@ -23,7 +24,8 @@ Kubernetes Cluster
 ├── NFS CSI driver       ── dynamic persistent volumes
 ├── external-dns         ── auto-syncs Ingress hostnames to Cloudflare DNS
 ├── NVIDIA device plugin ── exposes GPU to pods (optional)
-└── Home Assistant       ── ha.<domain>, config persisted on NFS
+├── Home Assistant       ── ha.<domain>, config persisted on NFS
+└── Ollama               ── ollama.<domain>, models persisted on NFS
 ```
 
 VM hostnames are registered automatically via DHCP DNS, so the cluster uses hostnames instead of hardcoded IPs. external-dns keeps Cloudflare DNS records in sync with the cluster's current IPs.
@@ -46,7 +48,8 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 │       ├── cloudflare-secret.yaml
 │       ├── home-assistant.yaml
 │       ├── nfs-storage-class.yaml
-│       └── nvidia-device-plugin.yaml
+│       ├── nvidia-device-plugin.yaml
+│       └── ollama.yaml
 ```
 
 ## Prerequisites
