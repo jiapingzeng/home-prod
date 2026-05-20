@@ -7,6 +7,7 @@ data:
   openclaw.json: |
     {
       "gateway": {
+        "mode": "local",
         "bind": "lan",
         "auth": { "mode": "token", "token": "{{ .Values.openclaw.gatewayToken }}" },
         "controlUi": {
@@ -27,8 +28,8 @@ data:
                 "reasoning": true,
                 "input": ["text"],
                 "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": 32768,
-                "maxTokens": 32768
+                "contextWindow": {{ .Values.openclaw.contextWindow | default 32768 }},
+                "maxTokens": {{ .Values.openclaw.maxTokens | default 32768 }}
               }
             ]
           }
@@ -99,6 +100,9 @@ spec:
       containers:
         - name: openclaw
           image: ghcr.io/openclaw/openclaw:{{ .Values.openclaw.version }}
+          env:
+            - name: TZ
+              value: America/Los_Angeles
           ports:
             - containerPort: 18789
           volumeMounts:
