@@ -45,6 +45,12 @@ spec:
               mountPath: /data
             - name: config
               mountPath: /config-src
+        - name: init-plugins
+          image: ghcr.io/openclaw/openclaw:{{ .Values.openclaw.version }}
+          command: ['sh', '-c', 'test -d /home/node/.openclaw/extensions/discord || openclaw plugins install clawhub:@openclaw/discord']
+          volumeMounts:
+            - name: data
+              mountPath: /home/node/.openclaw
       containers:
         - name: openclaw
           image: ghcr.io/openclaw/openclaw:{{ .Values.openclaw.version }}

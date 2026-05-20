@@ -28,12 +28,15 @@ data:
                 "reasoning": true,
                 "input": ["text"],
                 "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": {{ .Values.openclaw.contextWindow | default 32768 }},
+                "contextWindow": {{ .Values.openclaw.contextWindow | default 131072 }},
                 "maxTokens": {{ .Values.openclaw.maxTokens | default 32768 }}
               }
             ]
           }
         }
+      },
+      "plugins": {
+        "allow": ["discord"]
       },
       "channels": {
         "discord": {
