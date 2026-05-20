@@ -1,0 +1,21 @@
+{{- if .Values.homeAssistant.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: home-assistant-init
+data:
+  init.sh: |
+    #!/bin/sh
+    if ! grep -q "trusted_proxies" /config/configuration.yaml 2>/dev/null; then
+      cat >> /config/configuration.yaml <<EOF
+
+    default_config:
+
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - {{ .Values.k3s.podCIDR }}
+        - {{ .Values.k3s.serviceCIDR }}
+    EOF
+    fi
+{{- end }}

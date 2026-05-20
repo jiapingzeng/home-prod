@@ -1,57 +1,5 @@
 {{- if .Values.openclaw.enabled }}
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: openclaw-config
-data:
-  openclaw.json: |
-    {
-      "gateway": {
-        "mode": "local",
-        "bind": "lan",
-        "auth": { "mode": "token", "token": "{{ .Values.openclaw.gatewayToken }}" },
-        "controlUi": {
-          "allowedOrigins": ["https://openclaw.{{ .Values.domain }}"],
-          "dangerouslyDisableDeviceAuth": true
-        }
-      },
-      "models": {
-        "providers": {
-          "ollama": {
-            "baseUrl": "http://ollama:11434",
-            "apiKey": "ollama-local",
-            "api": "ollama",
-            "models": [
-              {
-                "id": "{{ .Values.openclaw.model }}",
-                "name": "{{ .Values.openclaw.model }}",
-                "reasoning": true,
-                "input": ["text"],
-                "cost": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 },
-                "contextWindow": {{ .Values.openclaw.contextWindow | default 32768 }},
-                "maxTokens": {{ .Values.openclaw.maxTokens | default 32768 }}
-              }
-            ]
-          }
-        }
-      },
-      "channels": {
-        "discord": {
-          "enabled": true,
-          "token": "{{ .Values.openclaw.discordToken }}",
-          "dmPolicy": "allowlist",
-          "allowFrom": [{{- range $i, $id := .Values.openclaw.discordAllowedUsers }}{{- if $i }}, {{ end }}"{{ $id }}"{{- end }}]
-        }
-      },
-      "agents": {
-        "defaults": {
-          "model": { "primary": "ollama/{{ .Values.openclaw.model }}" },
-          "timeoutSeconds": {{ .Values.openclaw.timeoutSeconds }}
-        }
-      }
-    }
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: openclaw-data
@@ -81,7 +29,7 @@ spec:
       labels:
         app: openclaw
       annotations:
-        checksum/config: {{ .Values.openclaw | toJson | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/openclaw-configmap.yaml") . | sha256sum }}
     spec:
       securityContext:
         runAsUser: 1000
