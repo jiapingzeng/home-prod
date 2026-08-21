@@ -1,0 +1,130 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: {{ .Values.hermes.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hermes
+  labels:
+    app: hermes
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hermes
+  template:
+    metadata:
+      labels:
+        app: hermes
+      annotations:
+        checksum/config: {{ .Values.hermes | toJson | sha256sum }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: hermes
+          image: nousresearch/hermes-agent:{{ .Values.hermes.version }}
+          args: ["gateway", "run"]
+          env:
+            - name: TZ
+              value: {{ .Values.hermes.timezone }}
+            - name: HERMES_UID
+              value: "1000"
+            - name: HERMES_GID
+              value: "1000"
+          ports:
+            - containerPort: 9119
+              name: gateway
+            - containerPort: 8642
+              name: api
+          envFrom:
+            - configMapRef:
+                name: hermes-env
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+            - name: config
+              mountPath: /etc/hermes
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8642
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8642
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- if .Values.hermes.resources }}
+          resources:
+            {{- if .Values.hermes.resources.limits }}
+            limits:
+              {{- toYaml .Values.hermes.resources.limits | nindent 14 }}
+            {{- end }}
+            {{- if .Values.hermes.resources.requests }}
+            requests:
+              {{- toYaml .Values.hermes.resources.requests | nindent 14 }}
+            {{- end }}
+          {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hermes-data
+        - name: config
+          configMap:
+            name: hermes-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes
+spec:
+  type: ClusterIP
+  selector:
+    app: hermes
+  ports:
+    - port: 9119
+      targetPort: 9119
+      name: gateway
+    - port: 8642
+      targetPort: 8642
+      name: api
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hermes
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  tls:
+    - hosts:
+        - hermes.{{ .Values.domain }}
+  rules:
+    - host: hermes.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hermes
+                port:
+                  number: 9119
+{{- end }}

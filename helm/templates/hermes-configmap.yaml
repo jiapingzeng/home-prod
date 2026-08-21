@@ -1,0 +1,20 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+data:
+  config.yaml: |
+    model:
+      provider: custom
+      base_url: http://ollama:11434/v1
+      api_mode: chat_completions
+      model: {{ .Values.hermes.model }}
+      context_length: {{ .Values.hermes.contextLength }}
+    security:
+      redact_secrets: true
+    terminal:
+      timeout: 180
+    display:
+      interface: tui
+{{- end }}

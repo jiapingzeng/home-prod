@@ -1,0 +1,20 @@
+{{- if .Values.hermes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-env
+data:
+  OLLAMA_BASE_URL: http://ollama:11434/v1
+  HERMES_MODEL: {{ .Values.hermes.model }}
+  HERMES_CONTEXT_LENGTH: "{{ .Values.hermes.contextLength }}"
+  HERMES_API_KEY: ollama-local
+  API_SERVER_HOST: "0.0.0.0"
+  # Dashboard / serve backend (port 9119) — the endpoint the Hermes desktop app connects to.
+  HERMES_DASHBOARD: "1"
+  HERMES_DASHBOARD_BASIC_AUTH_USERNAME: {{ .Values.hermes.dashboard.username | quote }}
+  HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: {{ .Values.hermes.dashboard.password | quote }}
+  HERMES_DASHBOARD_BASIC_AUTH_SECRET: {{ .Values.hermes.dashboard.authSecret | quote }}
+  # Discord messaging gateway — presence of a token auto-enables Discord.
+  DISCORD_BOT_TOKEN: {{ .Values.hermes.discordToken | quote }}
+  DISCORD_ALLOWED_USERS: {{ .Values.hermes.discordAllowedUsers | join "," | quote }}
+{{- end }}

@@ -11,6 +11,7 @@ Home automation Kubernetes cluster on Proxmox with GPU passthrough, NFS storage,
 - **Home Assistant** with NFS-backed config and Ingress routing
 - **Ollama** LLM inference server with GPU acceleration and persistent model storage
 - **OpenClaw** AI agent with chat support backed by local Ollama models
+- **Hermes** AI agent gateway backed by local Ollama models
 
 ## Architecture
 
@@ -27,7 +28,8 @@ Kubernetes Cluster
 ├── NVIDIA device plugin ── exposes GPU to pods (optional)
 ├── Home Assistant       ── ha.<domain>, config persisted on NFS
 ├── Ollama               ── ollama.<domain>, models persisted on NFS
-└── OpenClaw             ── openclaw.<domain>, AI agent gateway using Ollama
+├── OpenClaw             ── openclaw.<domain>, AI agent gateway using Ollama
+└── Hermes               ── hermes.<domain>, AI agent gateway using Ollama
 ```
 
 VM hostnames are registered automatically via DHCP DNS, so the cluster uses hostnames instead of hardcoded IPs. external-dns keeps Cloudflare DNS records in sync with the cluster's current IPs.
@@ -47,6 +49,7 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 │   ├── values.yaml.example         # Config template (copy to values.yaml)
 │   └── templates/
 │       ├── cloudflare-secret.yaml
+│       ├── hermes.yaml
 │       ├── home-assistant.yaml
 │       ├── nfs-storage-class.yaml
 │       ├── nvidia-device-plugin.yaml
@@ -86,6 +89,8 @@ Edit `helm/values.yaml`:
 | `openclaw.gatewayToken` | OpenClaw gateway auth token | Any random string |
 | `openclaw.discordToken` | Discord bot token | |
 | `openclaw.discordAllowedUsers` | Discord user IDs allowed to DM the bot | `["123456789"]` |
+| `hermes.model` | Ollama model Hermes uses for inference | `qwen3.5:27b` |
+| `hermes.contextLength` | Context window length for the model | `65536` |
 
 ### 2. Install
 
@@ -119,6 +124,10 @@ kubectl exec deploy/ollama -- ollama pull <model-name>
 OpenClaw is an AI agent gateway that connects to your local Ollama instance. Access the Control UI at `https://openclaw.<your-domain>` using the gateway token from your config.
 
 To connect a Discord bot, create one at [discord.com/developers](https://discord.com/developers/applications) with the `bot` and `applications.commands` scopes, enable the Message Content Intent, and add the token to your config. Add your Discord user ID to `discordAllowedUsers` to skip the pairing step.
+
+### Hermes
+
+Hermes is an AI agent gateway that connects to your local Ollama instance. Access it at `https://hermes.<your-domain>`. Set `hermes.model` to a model available in Ollama and tune `hermes.contextLength` to match.
 
 ### HTTPS
 

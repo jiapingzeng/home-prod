@@ -59,3 +59,25 @@ openclaw:
   discordToken: your-discord-bot-token
   discordAllowedUsers:
     - "your-discord-user-id"
+
+hermes:
+  enabled: true
+  version: latest
+  storage: 64Gi
+  model: qwen3.5:27b
+  contextLength: 65536
+  timezone: America/Los_Angeles
+  dashboard:
+    username: admin
+    password: your-dashboard-password
+    authSecret: a-random-signing-secret
+  discordToken: your-discord-bot-token
+  discordAllowedUsers:
+    - "your-discord-user-id"
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
