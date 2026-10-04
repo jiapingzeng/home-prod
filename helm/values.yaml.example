@@ -46,6 +46,10 @@ ollama:
   version: latest
   storage: 50Gi
   gpu: false
+  keepAlive: "-1"
+  flashAttention: "1"
+  kvCacheType: "q8_0"
+  contextLength: "131072"
   models:
     - qwen3.5:27b
 
