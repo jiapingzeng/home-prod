@@ -31,12 +31,19 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/openclaw-configmap.yaml") . | sha256sum }}
     spec:
+      {{- if .Values.ollama.gpu }}
+      nodeSelector:
+        nvidia.com/gpu: "true"
+      {{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
       initContainers:
+        - name: wait-for-ollama
+          image: busybox:1.36
+          command: ['sh', '-c', 'until wget -q -O- http://ollama:11434/api/version >/dev/null 2>&1; do echo "waiting for ollama"; sleep 5; done']
         - name: init-config
           image: busybox
           command: ['sh', '-c', 'cp /config-src/openclaw.json /data/openclaw.json']
