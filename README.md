@@ -4,7 +4,7 @@ Home automation Kubernetes cluster on Proxmox with GPU passthrough, NFS storage,
 
 ## What's Included
 
-- **3-node Kubernetes cluster** on Proxmox VMs (1 control plane, 2 workers) provisioned via cloud-init
+- **3-node Kubernetes cluster** on Proxmox VMs (1 control plane, 2 workers; plus an on-demand game node) provisioned via cloud-init
 - **GPU passthrough** with NVIDIA container runtime support (optional)
 - **NFS persistent storage** on the Proxmox host, provisioned dynamically via CSI driver
 - **Automatic DNS + HTTPS** via external-dns, Cloudflare, and Let's Encrypt
@@ -12,6 +12,7 @@ Home automation Kubernetes cluster on Proxmox with GPU passthrough, NFS storage,
 - **Ollama** LLM inference server with GPU acceleration and persistent model storage
 - **OpenClaw** AI agent with chat support backed by local Ollama models
 - **Hermes** AI agent gateway backed by local Ollama models
+- **Game servers** (e.g. Satisfactory) on an on-demand node, exposed via a free playit.gg tunnel
 
 ## Architecture
 
@@ -20,7 +21,8 @@ Proxmox Host
 ├── NFS server (/mnt/nfs/k3s)
 ├── VM: control-1 ── control plane + Traefik ingress
 ├── VM: data-1    ── worker + GPU (optional)
-└── VM: data-2    ── worker
+├── VM: data-2    ── worker
+└── VM: data-3    ── game node (powered on on-demand)
 
 Kubernetes Cluster
 ├── NFS CSI driver       ── dynamic persistent volumes
@@ -29,7 +31,8 @@ Kubernetes Cluster
 ├── Home Assistant       ── ha.<domain>, config persisted on NFS
 ├── Ollama               ── ollama.<domain>, models persisted on NFS
 ├── OpenClaw             ── openclaw.<domain>, AI agent gateway using Ollama
-└── Hermes               ── hermes.<domain>, AI agent gateway using Ollama
+├── Hermes               ── hermes.<domain>, AI agent gateway using Ollama
+└── Game servers         ── Satisfactory etc. on data-3, via a playit.gg tunnel
 ```
 
 VM hostnames are registered automatically via DHCP DNS, so the cluster uses hostnames instead of hardcoded IPs. external-dns keeps Cloudflare DNS records in sync with the cluster's current IPs.
@@ -49,6 +52,9 @@ VM hostnames are registered automatically via DHCP DNS, so the cluster uses host
 │   ├── values.yaml.example         # Config template (copy to values.yaml)
 │   └── templates/
 │       ├── cloudflare-secret.yaml
+│       ├── game-servers/
+│       │   ├── playit-secret.yaml
+│       │   └── satisfactory.yaml
 │       ├── hermes.yaml
 │       ├── home-assistant.yaml
 │       ├── nfs-storage-class.yaml
@@ -128,6 +134,19 @@ To connect a Discord bot, create one at [discord.com/developers](https://discord
 ### Hermes
 
 Hermes is an AI agent gateway that connects to your local Ollama instance. Access it at `https://hermes.<your-domain>`. Set `hermes.model` to a model available in Ollama and tune `hermes.contextLength` to match.
+
+### Game Servers
+
+Game servers live in `helm/templates/game-servers/` (one file per game, toggled by `gameServers.<game>.enabled`). They share the `data-3` node and one playit.gg agent (`gameServers.playit`), so swapping games is a config change. `data-3` is powered on only to play (it trades off against the Windows VM):
+
+```bash
+qm shutdown 901 && qm start 203   # start session
+qm shutdown 203 && qm start 901   # end session
+```
+
+**playit.gg (free, one-time):** generate a Docker secret key, set `gameServers.playit.secretKey`, `helm upgrade`. Create the tunnel in the dashboard, note the assigned port(s), set the game's ports to match.
+
+**Satisfactory:** one `TCP/UDP` tunnel, port count 2 → two consecutive ports; set `gamePort` to the first, `messagingPort` to the second. Players join via Server Manager → Add Server at `<tunnel>.playit.gg:<gamePort>`. Set `satisfactory.lan.enabled: true` for direct LAN play.
 
 ### HTTPS
 

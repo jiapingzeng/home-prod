@@ -85,3 +85,28 @@ hermes:
     requests:
       cpu: "500m"
       memory: "1Gi"
+
+gameServers:
+  node: data-3
+  playit:
+    enabled: true
+    version: "1.0.10"
+    secretKey: ""
+  satisfactory:
+    enabled: false
+    version: latest
+    storage: 32Gi
+    maxPlayers: 4
+    gamePort: 7777
+    messagingPort: 8888
+    autosaveNum: 5
+    resources:
+      requests:
+        cpu: "2"
+        memory: 6Gi
+      limits:
+        cpu: "8"
+        memory: 14Gi
+    lan:
+      enabled: false
+      type: LoadBalancer

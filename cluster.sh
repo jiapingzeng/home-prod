@@ -15,22 +15,25 @@ SNIPPET_DIR="/var/lib/vz/snippets"
 CLOUD_IMAGE="noble-server-cloudimg-amd64.img"
 CLOUD_IMAGE_URL="https://cloud-images.ubuntu.com/noble/current/$CLOUD_IMAGE"
 
-VM_IDS=(101 201 202)
+VM_IDS=(101 201 202 203)
 
 declare -A VM_CONFIG=(
     [101]="--cicustom vendor=local:snippets/k3s-control-plane.yaml"
     [201]="--cpu host --cores 8 --memory 8192 --hostpci0 mapping=$GPU_MAPPING,pcie=1 --cicustom vendor=local:snippets/k3s-data-plane-gpu.yaml"
-    [202]="--cpu host --cores 8 --memory 8192 --cicustom vendor=local:snippets/k3s-data-plane.yaml"
+    [202]="--cpu host --cores 8 --memory 4096 --cicustom vendor=local:snippets/k3s-data-plane.yaml"
+    [203]="--cpu host --cores 8 --memory 16384 --cicustom vendor=local:snippets/k3s-data-plane.yaml"
 )
 declare -A VM_NAME=(
     [101]="control-1"
     [201]="data-1"
     [202]="data-2"
+    [203]="data-3"
 )
 declare -A VM_DISK=(
     [101]="32G"
     [201]="256G"
     [202]="256G"
+    [203]="64G"
 )
 
 template_create() {
@@ -111,7 +114,7 @@ restart() {
 
     if [[ -n "$id" ]]; then
         if [[ -z "${VM_NAME[$id]}" ]]; then
-            echo "Unknown VM ID: $id. Valid IDs: 101, 201, 202"
+            echo "Unknown VM ID: $id. Valid IDs: 101, 201, 202, 203"
             exit 1
         fi
         clean_node $id

@@ -1,0 +1,113 @@
+{{- if .Values.gameServers.satisfactory.enabled }}
+{{- $g := .Values.gameServers.satisfactory }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: satisfactory-config
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: {{ $g.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: satisfactory
+  labels:
+    app: satisfactory
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: satisfactory
+  template:
+    metadata:
+      labels:
+        app: satisfactory
+      annotations:
+        checksum/config: {{ $g | toJson | sha256sum }}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.gameServers.node }}
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: satisfactory
+          image: wolveix/satisfactory-server:{{ $g.version }}
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: MAXPLAYERS
+              value: "{{ $g.maxPlayers }}"
+            - name: SERVERGAMEPORT
+              value: "{{ $g.gamePort }}"
+            - name: SERVERMESSAGINGPORT
+              value: "{{ $g.messagingPort }}"
+            - name: AUTOSAVENUM
+              value: "{{ $g.autosaveNum }}"
+          ports:
+            - name: game-udp
+              containerPort: {{ $g.gamePort }}
+              protocol: UDP
+            - name: game-tcp
+              containerPort: {{ $g.gamePort }}
+              protocol: TCP
+            - name: reliable
+              containerPort: {{ $g.messagingPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          startupProbe:
+            tcpSocket:
+              port: {{ $g.gamePort }}
+            periodSeconds: 20
+            failureThreshold: 180
+          readinessProbe:
+            tcpSocket:
+              port: {{ $g.gamePort }}
+            periodSeconds: 30
+          {{- with $g.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- if and .Values.gameServers.playit.enabled .Values.gameServers.playit.secretKey }}
+        {{- include "gameServers.playitSidecar" . | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: satisfactory-config
+{{- if $g.lan.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: satisfactory
+spec:
+  type: {{ $g.lan.type }}
+  selector:
+    app: satisfactory
+  ports:
+    - name: game-udp
+      port: {{ $g.gamePort }}
+      targetPort: {{ $g.gamePort }}
+      protocol: UDP
+    - name: game-tcp
+      port: {{ $g.gamePort }}
+      targetPort: {{ $g.gamePort }}
+      protocol: TCP
+    - name: reliable
+      port: {{ $g.messagingPort }}
+      targetPort: {{ $g.messagingPort }}
+      protocol: TCP
+{{- end }}
+{{- end }}
